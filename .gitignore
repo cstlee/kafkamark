@@ -1,2 +1,6 @@
 .tags*
 .vagrant
+
+bin
+src/*.o
+src/*.d
