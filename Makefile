@@ -1,8 +1,9 @@
 SRCDIR = src
+BUILDDIR = build
 BINDIR = bin
 
 src = $(wildcard $(SRCDIR)/*.cpp)
-obj = $(src:.cpp=.o)
+obj = $(src:$(SRCDIR)/%.cpp=$(BUILDDIR)/%.o)
 dep = $(obj:.o=.d)
 
 CFLAGS = -static
@@ -21,8 +22,15 @@ producer: $(SRCDIR)/producer.cpp
 
 -include $(dep)
 
-%.d: %.cpp
+$(BUILDDIR)/%.d: $(SRCDIR)/%.cpp
+	@mkdir -p $(BUILDDIR)
 	@$(CPP) $(CFLAGS) $< -MM -MT $(@:.d=.o) >$@
+
+.PHONY: test
+test:
+	echo $(src)
+	echo $(obj)
+	echo $(dep)
 
 .PHONY: clean
 clean:
