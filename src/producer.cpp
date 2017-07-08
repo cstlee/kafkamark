@@ -13,7 +13,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <rdkafkacpp.h>
+#include <librdkafka/rdkafkacpp.h>
 
 int
 main(int argc, char const *argv[])
