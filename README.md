@@ -1,16 +1,15 @@
 # kafkamark
 
-*kafkamark* is a simple benchmark used to measure the performance of [Apache
+_kafkamark_ is a simple benchmark used to measure the performance of [Apache
 kafka](https://kafka.apache.org).  The benchmark is written in C++ and uses the
 [librdkafka](https://github.com/edenhill/librdkafka) client library.
 
 ## Dependencies
 Required:
+* The GNU toolchain
+* GNU make
 * [librdkafka v0.9.5](https://github.com/edenhill/librdkafka)
 * [boost 1.55](http://www.boost.org)
-
-Optional:
-* [Vagrant](https://www.vagrantup.com)
 
 ## Vagrant
 
