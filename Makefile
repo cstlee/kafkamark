@@ -9,12 +9,13 @@ dep = $(obj:.o=.d)
 CFLAGS = -static
 LFLAGS = -lrdkafka++
 
-.PHONY: all
+.PHONY: all producer
 all: producer
+producer: $(BINDIR)/producer
 
-producer: $(SRCDIR)/producer.cpp
+$(BINDIR)/producer: $(SRCDIR)/producer.cpp
 	@mkdir -p $(BINDIR)
-	$(CC) -o $(BINDIR)/$@ $(CFLAGS) $< $(LFLAGS)
+	$(CC) -o $@ $(CFLAGS) $< $(LFLAGS)
 
 -include $(dep)
 
