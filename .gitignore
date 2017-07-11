@@ -2,6 +2,6 @@
 .vagrant
 
 bin
-build
+obj
 src/*.o
 src/*.d

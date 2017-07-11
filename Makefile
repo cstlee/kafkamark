@@ -1,27 +1,33 @@
-SRCDIR = src
-BUILDDIR = build
-BINDIR = bin
-
-src = $(wildcard $(SRCDIR)/*.cpp)
-obj = $(src:$(SRCDIR)/%.cpp=$(BUILDDIR)/%.o)
-dep = $(obj:.o=.d)
-
+CC = g++
 CFLAGS = -static
 LFLAGS = -lrdkafka++
 
-.PHONY: all producer
-all: producer
-producer: $(BINDIR)/producer
+SRCDIR = src
+OBJDIR = obj
+BINDIR = bin
 
-$(BINDIR)/producer: $(SRCDIR)/producer.cpp
+src = $(wildcard $(SRCDIR)/*.cpp)
+obj = $(src:$(SRCDIR)/%.cpp=$(OBJDIR)/%.o)
+dep = $(obj:.o=.d)
+
+.SUFFIXES:
+
+.PHONY: all
+all: $(BINDIR)/producer
+
+$(BINDIR)/producer: $(OBJDIR)/producer.o
 	@mkdir -p $(BINDIR)
 	$(CC) -o $@ $(CFLAGS) $< $(LFLAGS)
 
 -include $(dep)
 
-$(BUILDDIR)/%.d: $(SRCDIR)/%.cpp
-	@mkdir -p $(BUILDDIR)
+$(OBJDIR)/%.d: $(SRCDIR)/%.cpp
+	@mkdir -p $(OBJDIR)
 	@$(CPP) $(CFLAGS) $< -MM -MT $(@:.d=.o) >$@
+
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp
+	@mkdir -p $(OBJDIR)
+	$(CC) -c -o $@ $<
 
 .PHONY: clean
 clean:
