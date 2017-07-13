@@ -1,6 +1,8 @@
 CC = g++
 CFLAGS = -Wall -Werror
-LFLAGS = -lboost_program_options -lrdkafka++
+LFLAGS = \
+		-l:libboost_program_options.a \
+		-l:librdkafka++.a -l:librdkafka.a -lpthread
 
 SRCDIR = src
 OBJDIR = obj
