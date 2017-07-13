@@ -13,11 +13,46 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <librdkafka/rdkafkacpp.h>
+#include "KafkaClient.h"
+
+using namespace Kafkamark;
 
 int
 main(int argc, char const *argv[])
 {
+    // Get Command Line Options
+    OptionsDescription options("Usage");
+    options.add_options()
+        ("help",
+            "produce help message")
+    ;
+    ProgramOptions::variables_map variables;
+
+    KafkaClient::Options kafkaClientOptions(&variables);
+    kafkaClientOptions.addTo(options);
+
+    // Configure and Init with Options
+    ProgramOptions::store(ProgramOptions::parse_command_line(argc,
+                                                             argv,
+                                                             options),
+                          variables);
+    ProgramOptions::notify(variables);
+
+    if (variables.count("help")) {
+        std::cout << options << std::endl;
+        return 0;
+    }
+
+    KafkaClient client(kafkaClientOptions);
+
+    char msg[100] = "Hello World";
+    // Run Workload
+    for (int i = 0; i < 100; ++i) {
+        if (!client.produce(msg, 100)) {
+            break;
+        }
+    }
+
     /* code */
     return 0;
 }

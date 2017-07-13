@@ -1,6 +1,6 @@
 CC = g++
-CFLAGS = -static
-LFLAGS = -lrdkafka++
+CFLAGS = -Wall -Werror
+LFLAGS = -lboost_program_options -lrdkafka++
 
 SRCDIR = src
 OBJDIR = obj
@@ -18,9 +18,12 @@ dep = $(obj:.$(OBJEXT)=.$(DEPEXT))
 .PHONY: all
 all: $(BINDIR)/producer
 
-$(BINDIR)/producer: $(OBJDIR)/producer.$(OBJEXT)
+producer-objs = \
+		$(OBJDIR)/KafkaClient.$(OBJEXT)
+
+$(BINDIR)/producer: $(OBJDIR)/producer.$(OBJEXT) $(producer-objs)
 	@mkdir -p $(BINDIR)
-	$(CC) -o $@ $(CFLAGS) $< $(LFLAGS)
+	$(CC) -o $@ $(CFLAGS) $^ $(LFLAGS)
 
 -include $(dep)
 
