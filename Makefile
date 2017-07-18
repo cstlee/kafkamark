@@ -1,6 +1,6 @@
 CC = g++
 CFLAGS = -Wall -Werror
-LFLAGS = \
+LFLAGS = -static \
 		-l:libboost_program_options.a \
 		-l:librdkafka++.a -l:librdkafka.a -lpthread
 
