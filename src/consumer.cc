@@ -28,7 +28,7 @@ main(int argc, char const *argv[])
     ;
     ProgramOptions::variables_map variables;
 
-    KafkaClient::Options kafkaClientOptions(&variables, KafkaClient::PRODUCER);
+    KafkaClient::Options kafkaClientOptions(&variables, KafkaClient::CONSUMER);
     kafkaClientOptions.addTo(options);
 
     // Configure and Init with Options
@@ -48,9 +48,12 @@ main(int argc, char const *argv[])
     char msg[100] = "Hello World";
     // Run Workload
     for (int i = 0; i < 100; ++i) {
-        if (!client.produce(msg, 100)) {
+        KafkaClient::Message msg;
+        if (!client.consume(&msg, 1000)) {
             break;
         }
+        char* payload = (char*) msg.payload;
+        std::cout << payload << std::endl;
     }
 
     /* code */

@@ -24,11 +24,13 @@ namespace Kafkamark {
  *      Pointer to the variables map which will contain the configured option
  *      variables.
  */
-KafkaClient::Options::Options(ProgramOptions::variables_map* vars)
+KafkaClient::Options::Options(ProgramOptions::variables_map* vars, Mode mode)
     : vars(vars)
     , generalOptions("Kafka General Options")
-    , producerOptions("Kafka Producer Options")
+    , isConsumer(mode & CONSUMER)
     , consumerOptions("Kafka Consumer Options")
+    , isProducer(mode & PRODUCER)
+    , producerOptions("Kafka Producer Options")
 {
     generalOptions.add_options()
         ("brokers,b",
@@ -61,8 +63,14 @@ void
 KafkaClient::Options::addTo(OptionsDescription& options)
 {
     options.add(generalOptions);
-    options.add(consumerOptions);
-    options.add(producerOptions);
+
+    if (isConsumer) {
+        options.add(consumerOptions);
+    }
+
+    if (isProducer) {
+        options.add(producerOptions);
+    }
 }
 
 /**
@@ -71,6 +79,7 @@ KafkaClient::Options::addTo(OptionsDescription& options)
 KafkaClient::KafkaClient(KafkaClient::Options& options)
     : conf()
     , tconf()
+    , consumer()
     , producer()
     , topic()
 {
@@ -103,23 +112,53 @@ KafkaClient::KafkaClient(KafkaClient::Options& options)
     }
 
     // Consumer configuration
-    setConfig(options, "fetch.wait.max.ms");
-
-    // Producer configuration
-    setConfig(options, "queue.buffering.max.ms");
-
-    // Create producer
-    producer = RdKafka::Producer::create(conf, errstr);
-    if (!producer) {
-         std::cerr << "Failed to create producer: " << errstr << std::endl;
-         exit(1);
+    if (options.isConsumer) {
+        setConfig(options, "fetch.wait.max.ms");
     }
 
-    // Create topic handle
-    topic = RdKafka::Topic::create(producer, topic_str, tconf, errstr);
-    if (!topic) {
-      std::cerr << "Failed to create topic: " << errstr << std::endl;
-      exit(1);
+    // Producer configuration
+    if (options.isProducer) {
+        setConfig(options, "queue.buffering.max.ms");
+    }
+
+    // Consumer setup
+    if (options.isConsumer) {
+        // Create consumer
+        consumer = RdKafka::KafkaConsumer::create(conf, errstr);
+        if (!consumer) {
+            std::cerr << "Failed to create consumer: " << errstr << std::endl;
+            exit(1);
+        }
+
+        // Subscribe to topics
+        std::vector<std::string> topics;
+        topics.push_back(topic_str);
+        RdKafka::ErrorCode err = consumer->subscribe(topics);
+        if (err) {
+            std::cerr << "Failed to subscribe to "
+                      << topics.size()
+                      << " topics: "
+                      << RdKafka::err2str(err)
+                      << std::endl;
+            exit(1);
+        }
+    }
+
+    // Producer Setup
+    if (options.isProducer) {
+        // Create producer
+        producer = RdKafka::Producer::create(conf, errstr);
+        if (!producer) {
+             std::cerr << "Failed to create producer: " << errstr << std::endl;
+             exit(1);
+        }
+
+        // Create topic handle
+        topic = RdKafka::Topic::create(producer, topic_str, tconf, errstr);
+        if (!topic) {
+          std::cerr << "Failed to create topic: " << errstr << std::endl;
+          exit(1);
+        }
     }
 }
 
@@ -128,10 +167,53 @@ KafkaClient::KafkaClient(KafkaClient::Options& options)
  */
 KafkaClient::~KafkaClient()
 {
-    producer->flush(10*1000);
-    delete topic;
-    delete producer;
+    if (producer) {
+        producer->flush(10*1000);
+        if (topic) {
+            delete topic;
+        }
+        delete producer;
+    }
 }
+
+/**
+ * Consume a message off the configured Kafka topic and make it accessible from
+ * the provided KafkaClient::Message pointer.
+ *
+ * \param msg
+ *      Pointer to the KafkaClient::Message handler which will have access to
+ *      the acquired message.
+ * \param timeout_ms
+ *      Number of ms to wait before returning with or without a message.
+ * \return
+ *      True, if a message was found without error.  False, otherwise.
+ */
+ bool
+ KafkaClient::consume(KafkaClient::Message* msg, int timeout_ms)
+ {
+    RdKafka::Message* message = consumer->consume(timeout_ms);
+
+    switch (message->err()) {
+        case RdKafka::ERR_NO_ERROR:
+            msg->message = message;
+            msg->payload = msg->message->payload();
+            msg->len = msg->message->len();
+            return true;
+            break;
+        case RdKafka::ERR__UNKNOWN_TOPIC:
+        case RdKafka::ERR__UNKNOWN_PARTITION:
+            std::cerr << "Consume failed: " << message->errstr() << std::endl;
+        case RdKafka::ERR__TIMED_OUT:
+            break;
+        default:
+            /* Errors */
+            std::cerr << "Consume failed: " << message->errstr() << std::endl;
+            break;
+    }
+
+    delete message;
+    return false;
+ }
 
 /**
  * Produce the provided message to the configured Kafka topic.

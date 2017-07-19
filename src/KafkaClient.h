@@ -35,11 +35,19 @@ typedef ProgramOptions::options_description OptionsDescription;
 class KafkaClient {
   public:
     /**
+     * Flag indicating the
+     */
+    enum Mode {
+        CONSUMER = 1 << 0,
+        PRODUCER = 1 << 1,
+    };
+
+    /**
      * Encapsulates the command line options available for a KafkaClient.
      */
     class Options {
       public:
-        explicit Options(ProgramOptions::variables_map* vars);
+        explicit Options(ProgramOptions::variables_map* vars, Mode mode);
         ~Options(){}
 
         void addTo(OptionsDescription& options);
@@ -51,8 +59,14 @@ class KafkaClient {
         /// Options available to all Kafka clients.
         OptionsDescription generalOptions;
 
+        /// Indicates whether consumer functionality is requested.
+        bool isConsumer;
+
         /// Options available to Kafka consumers.
         OptionsDescription consumerOptions;
+
+        /// Indicates whether producer functionality is requested.
+        bool isProducer;
 
         /// Options available to Kafka producers.
         OptionsDescription producerOptions;
@@ -61,16 +75,53 @@ class KafkaClient {
         friend KafkaClient;
     };
 
+    /**
+     * Encapsulates a Kafka Message mostly to implement scope based memory
+     * management.
+     */
+    class Message {
+      public:
+        Message()
+            : payload(NULL)
+            , len(0)
+            , message()
+        {}
+
+        ~Message()
+        {
+            if (message)
+                delete message;
+        }
+
+        /// Points to the message payload.
+        void* payload;
+
+        /// Length of the message payload.
+        size_t len;
+
+      private:
+        /// Pointer to a message
+        RdKafka::Message* message;
+
+        // Let KafkaClient directly access the variables
+        friend KafkaClient;
+    };
+
     explicit KafkaClient(Options& options);
     ~KafkaClient();
 
+    bool consume(Message* msg, int timeout_ms);
     bool produce(char* msg, size_t len);
+
   private:
     /// Configuration for the client library.
     RdKafka::Conf *conf;
 
     /// Configuration for the topic.
     RdKafka::Conf *tconf;
+
+    /// Handle to Kafka consumer client
+    RdKafka::KafkaConsumer *consumer;
 
     /// Handle to Kafka producer client.
     RdKafka::Producer *producer;
@@ -80,6 +131,15 @@ class KafkaClient {
 
     bool setConfig(Options& options, const char* optionName);
 };
+
+/**
+ * Bitwise or operator for KafkaClient::Mode.
+ */
+inline KafkaClient::Mode operator|(KafkaClient::Mode a, KafkaClient::Mode b)
+{
+    return static_cast<KafkaClient::Mode>(static_cast<int>(a) |
+                                          static_cast<int>(b));
+}
 
 }  // namespace Kafkamark
 

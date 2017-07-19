@@ -18,12 +18,19 @@ dep = $(obj:.$(OBJEXT)=.$(DEPEXT))
 .SUFFIXES:
 
 .PHONY: all
-all: $(BINDIR)/producer
+all: $(BINDIR)/producer $(BINDIR)/consumer
 
 producer-objs = \
 		$(OBJDIR)/KafkaClient.$(OBJEXT)
 
 $(BINDIR)/producer: $(OBJDIR)/producer.$(OBJEXT) $(producer-objs)
+	@mkdir -p $(BINDIR)
+	$(CC) -o $@ $(CFLAGS) $^ $(LFLAGS)
+
+consumer-objs = \
+		$(OBJDIR)/KafkaClient.$(OBJEXT)
+
+$(BINDIR)/consumer: $(OBJDIR)/consumer.$(OBJEXT) $(consumer-objs)
 	@mkdir -p $(BINDIR)
 	$(CC) -o $@ $(CFLAGS) $^ $(LFLAGS)
 
