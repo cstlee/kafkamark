@@ -39,6 +39,10 @@ KafkaClient::Options::Options(ProgramOptions::variables_map* vars, Mode mode)
         ("topic,t",
                 ProgramOptions::value< std::string >(),
                 "Topic to fetch / produce")
+        ("group.id,g",
+                ProgramOptions::value< std::string >(),
+                "Client group id string. All clients sharing the same group.id "
+                "belong to the same group. *Type: string*")
     ;
 
     consumerOptions.add_options()
@@ -110,6 +114,8 @@ KafkaClient::KafkaClient(KafkaClient::Options& options)
         std::cerr << options.generalOptions << std::endl;
         exit(1);
     }
+
+    setConfig(options, "group.id");
 
     // Consumer configuration
     if (options.isConsumer) {
@@ -203,11 +209,14 @@ KafkaClient::~KafkaClient()
         case RdKafka::ERR__UNKNOWN_TOPIC:
         case RdKafka::ERR__UNKNOWN_PARTITION:
             std::cerr << "Consume failed: " << message->errstr() << std::endl;
+            exit(1);
         case RdKafka::ERR__TIMED_OUT:
+        case RdKafka::ERR__PARTITION_EOF:
             break;
         default:
             /* Errors */
             std::cerr << "Consume failed: " << message->errstr() << std::endl;
+            exit(1);
             break;
     }
 
@@ -229,10 +238,12 @@ bool
 KafkaClient::produce(char* msg, size_t len)
 {
     int partition = 0;
-    RdKafka::ErrorCode resp = producer->produce(topic, partition,
-                                                RdKafka::Producer::RK_MSG_BLOCK,
-                                                msg, len,
-                                                NULL, NULL);
+    RdKafka::ErrorCode resp;
+    do {
+        resp = producer->produce(topic, partition,
+                RdKafka::Producer::RK_MSG_COPY, msg, len, NULL, NULL);
+    } while (resp == RdKafka::ERR__QUEUE_FULL);
+
     if (resp != RdKafka::ERR_NO_ERROR) {
         std::cerr << "% Produce failed: "
                   << RdKafka::err2str(resp)

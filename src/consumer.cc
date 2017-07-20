@@ -45,15 +45,15 @@ main(int argc, char const *argv[])
 
     KafkaClient client(kafkaClientOptions);
 
-    char msg[100] = "Hello World";
     // Run Workload
-    for (int i = 0; i < 100; ++i) {
+    while(1) {
         KafkaClient::Message msg;
         if (!client.consume(&msg, 1000)) {
-            break;
+            // break;
+        } else {
+            char* payload = (char*) msg.payload;
+            std::cout << payload << std::endl;
         }
-        char* payload = (char*) msg.payload;
-        std::cout << payload << std::endl;
     }
 
     /* code */

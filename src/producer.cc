@@ -45,9 +45,10 @@ main(int argc, char const *argv[])
 
     KafkaClient client(kafkaClientOptions);
 
-    char msg[100] = "Hello World";
     // Run Workload
-    for (int i = 0; i < 100; ++i) {
+    for (int i = 0; i < 200000; ++i) {
+        char msg[100];
+        snprintf(msg, 100, "Hello World: %d", i);
         if (!client.produce(msg, 100)) {
             break;
         }
