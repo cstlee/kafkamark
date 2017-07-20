@@ -173,6 +173,10 @@ KafkaClient::KafkaClient(KafkaClient::Options& options)
  */
 KafkaClient::~KafkaClient()
 {
+    if (consumer) {
+        consumer->close();
+        delete consumer;
+    }
     if (producer) {
         producer->flush(10*1000);
         if (topic) {
