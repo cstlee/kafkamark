@@ -20,19 +20,18 @@ using namespace Kafkamark;
 int
 main(int argc, char const *argv[])
 {
+    KafkaClient client(KafkaClient::CONSUMER);
+
     // Get Command Line Options
     OptionsDescription options("Usage");
     options.add_options()
         ("help",
             "produce help message")
     ;
-    ProgramOptions::variables_map variables;
-
-    KafkaClient::Options kafkaClientOptions(&variables, KafkaClient::CONSUMER);
-    KafkaClient client(kafkaClientOptions);
-    kafkaClientOptions.addTo(options);
+    client.addOptionsTo(options);
 
     // Configure and Init with Options
+    ProgramOptions::variables_map variables;
     ProgramOptions::store(ProgramOptions::parse_command_line(argc,
                                                              argv,
                                                              options),

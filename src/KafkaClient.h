@@ -43,39 +43,6 @@ class KafkaClient {
     };
 
     /**
-     * Encapsulates the command line options available for a KafkaClient.
-     */
-    class Options {
-      public:
-        explicit Options(ProgramOptions::variables_map* vars, Mode mode);
-        ~Options(){}
-
-        void addTo(OptionsDescription& options);
-
-      private:
-        /// Pointer to configured option variables.
-        ProgramOptions::variables_map* vars;
-
-        /// Options available to all Kafka clients.
-        OptionsDescription generalOptions;
-
-        /// Indicates whether consumer functionality is requested.
-        bool isConsumer;
-
-        /// Options available to Kafka consumers.
-        OptionsDescription consumerOptions;
-
-        /// Indicates whether producer functionality is requested.
-        bool isProducer;
-
-        /// Options available to Kafka producers.
-        OptionsDescription producerOptions;
-
-        // Let KafkaClient directly access the variables.
-        friend KafkaClient;
-    };
-
-    /**
      * Encapsulates a Kafka Message mostly to implement scope based memory
      * management.
      */
@@ -107,17 +74,27 @@ class KafkaClient {
         friend KafkaClient;
     };
 
-    explicit KafkaClient(Options& options);
+    explicit KafkaClient(Mode mode);
     ~KafkaClient();
 
+    void addOptionsTo(OptionsDescription& options);
     void configure(ProgramOptions::variables_map& variables);
 
     bool consume(Message* msg, int timeout_ms);
     bool produce(char* msg, size_t len);
 
   private:
-    /// Available client configuration options.
-    Options options;
+    /// Mode which the client should run.
+    Mode mode;
+
+    /// Options available to all Kafka clients.
+    OptionsDescription generalOptions;
+
+    /// Options available to Kafka consumers.
+    OptionsDescription consumerOptions;
+
+    /// Options available to Kafka producers.
+    OptionsDescription producerOptions;
 
     /// Configuration for the client library.
     RdKafka::Conf *conf;

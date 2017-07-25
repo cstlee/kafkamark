@@ -18,19 +18,18 @@
 namespace Kafkamark {
 
 /**
- * Constructor for KafkaClient::Options.
- *
- * \param vars
- *      Pointer to the variables map which will contain the configured option
- *      variables.
+ * Construct a KafkaClient object with the provided options.
  */
-KafkaClient::Options::Options(ProgramOptions::variables_map* vars, Mode mode)
-    : vars(vars)
+KafkaClient::KafkaClient(KafkaClient::Mode mode)
+    : mode(mode)
     , generalOptions("Kafka General Options")
-    , isConsumer(mode & CONSUMER)
     , consumerOptions("Kafka Consumer Options")
-    , isProducer(mode & PRODUCER)
     , producerOptions("Kafka Producer Options")
+    , conf()
+    , tconf()
+    , consumer()
+    , producer()
+    , topic()
 {
     generalOptions.add_options()
         ("brokers,b",
@@ -61,36 +60,6 @@ KafkaClient::Options::Options(ProgramOptions::variables_map* vars, Mode mode)
 }
 
 /**
- * Adds the available Kafka options to the provided OptionsDescription.
- */
-void
-KafkaClient::Options::addTo(OptionsDescription& options)
-{
-    options.add(generalOptions);
-
-    if (isConsumer) {
-        options.add(consumerOptions);
-    }
-
-    if (isProducer) {
-        options.add(producerOptions);
-    }
-}
-
-/**
- * Construct a KafkaClient object with the provided options.
- */
-KafkaClient::KafkaClient(KafkaClient::Options& options)
-    : options(options)
-    , conf()
-    , tconf()
-    , consumer()
-    , producer()
-    , topic()
-{
-}
-
-/**
  * KafkaClient Destructor
  */
 KafkaClient::~KafkaClient()
@@ -105,6 +74,23 @@ KafkaClient::~KafkaClient()
             delete topic;
         }
         delete producer;
+    }
+}
+
+/**
+ * Adds the available Kafka options to the provided OptionsDescription.
+ */
+void
+KafkaClient::addOptionsTo(OptionsDescription& options)
+{
+    options.add(generalOptions);
+
+    if (mode & CONSUMER) {
+        options.add(consumerOptions);
+    }
+
+    if (mode & PRODUCER) {
+        options.add(producerOptions);
     }
 }
 
@@ -133,7 +119,7 @@ KafkaClient::configure(ProgramOptions::variables_map& variables)
     } else {
         std::cerr << "Couldn't construct client: No brokers list provided."
                   << std::endl;
-        std::cerr << options.generalOptions << std::endl;
+        std::cerr << generalOptions << std::endl;
         exit(1);
     }
 
@@ -142,24 +128,24 @@ KafkaClient::configure(ProgramOptions::variables_map& variables)
     } else {
         std::cerr << "Couldn't construct client: No topic provided."
                   << std::endl;
-        std::cerr << options.generalOptions << std::endl;
+        std::cerr << generalOptions << std::endl;
         exit(1);
     }
 
     setConfig(variables, "group.id");
 
     // Consumer configuration
-    if (options.isConsumer) {
+    if (mode & CONSUMER) {
         setConfig(variables, "fetch.wait.max.ms");
     }
 
     // Producer configuration
-    if (options.isProducer) {
+    if (mode & PRODUCER) {
         setConfig(variables, "queue.buffering.max.ms");
     }
 
     // Consumer setup
-    if (options.isConsumer) {
+    if (mode & CONSUMER) {
         // Create consumer
         consumer = RdKafka::KafkaConsumer::create(conf, errstr);
         if (!consumer) {
@@ -182,7 +168,7 @@ KafkaClient::configure(ProgramOptions::variables_map& variables)
     }
 
     // Producer Setup
-    if (options.isProducer) {
+    if (mode & PRODUCER) {
         // Create producer
         producer = RdKafka::Producer::create(conf, errstr);
         if (!producer) {
