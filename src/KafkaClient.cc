@@ -81,11 +81,42 @@ KafkaClient::Options::addTo(OptionsDescription& options)
  * Construct a KafkaClient object with the provided options.
  */
 KafkaClient::KafkaClient(KafkaClient::Options& options)
-    : conf()
+    : options(options)
+    , conf()
     , tconf()
     , consumer()
     , producer()
     , topic()
+{
+}
+
+/**
+ * KafkaClient Destructor
+ */
+KafkaClient::~KafkaClient()
+{
+    if (consumer) {
+        consumer->close();
+        delete consumer;
+    }
+    if (producer) {
+        producer->flush(10*1000);
+        if (topic) {
+            delete topic;
+        }
+        delete producer;
+    }
+}
+
+/**
+ * Configure the client with the provided options.  Must be called before the
+ * client can be used to produce or consume.
+ *
+ * \param variables
+ *      Pointer to the variables map contains the configured option variables.
+ */
+void
+KafkaClient::configure(ProgramOptions::variables_map& variables)
 {
     std::string errstr;
     std::string topic_str;
@@ -95,9 +126,9 @@ KafkaClient::KafkaClient(KafkaClient::Options& options)
     tconf = RdKafka::Conf::create(RdKafka::Conf::CONF_TOPIC);
 
     // General configuration
-    if (options.vars->count("brokers")) {
+    if (variables.count("brokers")) {
         conf->set("metadata.broker.list",
-                options.vars->at("brokers").as<std::string>(),
+                variables.at("brokers").as<std::string>(),
                 errstr);
     } else {
         std::cerr << "Couldn't construct client: No brokers list provided."
@@ -106,8 +137,8 @@ KafkaClient::KafkaClient(KafkaClient::Options& options)
         exit(1);
     }
 
-    if (options.vars->count("topic")) {
-        topic_str = options.vars->at("topic").as<std::string>();
+    if (variables.count("topic")) {
+        topic_str = variables.at("topic").as<std::string>();
     } else {
         std::cerr << "Couldn't construct client: No topic provided."
                   << std::endl;
@@ -115,16 +146,16 @@ KafkaClient::KafkaClient(KafkaClient::Options& options)
         exit(1);
     }
 
-    setConfig(options, "group.id");
+    setConfig(variables, "group.id");
 
     // Consumer configuration
     if (options.isConsumer) {
-        setConfig(options, "fetch.wait.max.ms");
+        setConfig(variables, "fetch.wait.max.ms");
     }
 
     // Producer configuration
     if (options.isProducer) {
-        setConfig(options, "queue.buffering.max.ms");
+        setConfig(variables, "queue.buffering.max.ms");
     }
 
     // Consumer setup
@@ -165,24 +196,6 @@ KafkaClient::KafkaClient(KafkaClient::Options& options)
           std::cerr << "Failed to create topic: " << errstr << std::endl;
           exit(1);
         }
-    }
-}
-
-/**
- * KafkaClient Destructor
- */
-KafkaClient::~KafkaClient()
-{
-    if (consumer) {
-        consumer->close();
-        delete consumer;
-    }
-    if (producer) {
-        producer->flush(10*1000);
-        if (topic) {
-            delete topic;
-        }
-        delete producer;
     }
 }
 
@@ -261,7 +274,7 @@ KafkaClient::produce(char* msg, size_t len)
  * Helper function to set the client library configuration based on provided
  * option values.
  *
- * \parma options
+ * \parma variables
  *      Contains the option value that should be set.
  * \param optionName
  *      Name of the client library config option that should be set.
@@ -269,12 +282,13 @@ KafkaClient::produce(char* msg, size_t len)
  *      True, if the option was set. False, otherwise.
  */
 bool
-KafkaClient::setConfig(Options& options, const char* optionName)
+KafkaClient::setConfig(ProgramOptions::variables_map& variables,
+        const char* optionName)
 {
     std::string errstr;
-    if (options.vars->count(optionName)) {
+    if (variables.count(optionName)) {
         conf->set(optionName,
-                options.vars->at(optionName).as<std::string>(),
+                variables.at(optionName).as<std::string>(),
                 errstr);
         if (errstr == "") {
             return true;

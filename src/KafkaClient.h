@@ -110,10 +110,15 @@ class KafkaClient {
     explicit KafkaClient(Options& options);
     ~KafkaClient();
 
+    void configure(ProgramOptions::variables_map& variables);
+
     bool consume(Message* msg, int timeout_ms);
     bool produce(char* msg, size_t len);
 
   private:
+    /// Available client configuration options.
+    Options options;
+
     /// Configuration for the client library.
     RdKafka::Conf *conf;
 
@@ -129,7 +134,8 @@ class KafkaClient {
     /// Handle to Kafka topic.
     RdKafka::Topic *topic;
 
-    bool setConfig(Options& options, const char* optionName);
+    bool setConfig(ProgramOptions::variables_map& variables,
+            const char* optionName);
 };
 
 /**

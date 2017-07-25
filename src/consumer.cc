@@ -29,6 +29,7 @@ main(int argc, char const *argv[])
     ProgramOptions::variables_map variables;
 
     KafkaClient::Options kafkaClientOptions(&variables, KafkaClient::CONSUMER);
+    KafkaClient client(kafkaClientOptions);
     kafkaClientOptions.addTo(options);
 
     // Configure and Init with Options
@@ -43,7 +44,7 @@ main(int argc, char const *argv[])
         return 0;
     }
 
-    KafkaClient client(kafkaClientOptions);
+    client.configure(variables);
 
     // Run Workload
     while(1) {
