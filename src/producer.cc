@@ -17,9 +17,11 @@
 
 #include "Payload.h"
 #include "PerfUtils/Cycles.h"
+#include "PerfUtils/TimeTrace.h"
 
 using namespace Kafkamark;
 using PerfUtils::Cycles;
+using PerfUtils::TimeTrace;
 
 int
 main(int argc, char const *argv[])
@@ -27,12 +29,16 @@ main(int argc, char const *argv[])
     KafkaClient client(KafkaClient::PRODUCER);
 
     double targetOPS;
+    std::string logDir;
 
     // Get Command Line Options
     OptionsDescription options("Usage");
     options.add_options()
         ("help",
             "produce help message")
+        ("logDir,L",
+            ProgramOptions::value< std::string >(&logDir),
+            "Destination log directory for log output.")
         ("throughput.ops",
             ProgramOptions::value< double >(&targetOPS)->default_value(0),
             "Operations per second the producer should attempt to offer "
@@ -51,6 +57,16 @@ main(int argc, char const *argv[])
     if (variables.count("help")) {
         std::cout << options << std::endl;
         return 0;
+    }
+
+    // TODO(cstlee): TimeTrace currently requires the output string's lifetime
+    //               be longer than any call to print.  Once TimeTrace is fixed,
+    //               the timeTraceOutName variable can be moved to a more
+    //               reasonable place like in the if statement.
+    std::string timeTraceOutName = logDir;
+    if (variables.count("logDir")) {
+        timeTraceOutName.append("TimeTrace.log");
+        TimeTrace::setOutputFileName(timeTraceOutName.c_str());
     }
 
     client.configure(variables);
