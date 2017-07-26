@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = -Wall -Werror
+CFLAGS = -std=c++11 -Wall -Werror
 LFLAGS = -static \
 		-l:libboost_program_options.a \
 		-l:librdkafka++.a -l:librdkafka.a -lpthread \
@@ -43,7 +43,7 @@ $(OBJDIR)/%.$(DEPEXT): $(SRCDIR)/%.$(SRCEXT)
 
 $(OBJDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT)
 	@mkdir -p $(OBJDIR)
-	$(CC) -c -o $@ $<
+	$(CC) -c -o $@ $(CFLAGS) $<
 
 .PHONY: clean
 clean:
