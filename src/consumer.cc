@@ -15,7 +15,11 @@
 
 #include "KafkaClient.h"
 
+#include "Payload.h"
+#include "PerfUtils/Cycles.h"
+
 using namespace Kafkamark;
+using PerfUtils::Cycles;
 
 int
 main(int argc, char const *argv[])
@@ -51,8 +55,14 @@ main(int argc, char const *argv[])
         if (!client.consume(&msg, 1000)) {
             // break;
         } else {
+            uint64_t endTSC = Cycles::rdtsc();
             char* payload = (char*) msg.payload;
-            std::cout << payload << std::endl;
+            Payload::Header* header = (Payload::Header*) payload;
+            std::cout << Cycles::toMicroseconds(endTSC - header->timestampTSC)
+                    << ": "
+                    << payload + sizeof(Payload::Header)
+                    << header->msgId
+                    << std::endl;
         }
     }
 

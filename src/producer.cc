@@ -15,18 +15,28 @@
 
 #include "KafkaClient.h"
 
+#include "Payload.h"
+#include "PerfUtils/Cycles.h"
+
 using namespace Kafkamark;
+using PerfUtils::Cycles;
 
 int
 main(int argc, char const *argv[])
 {
     KafkaClient client(KafkaClient::PRODUCER);
 
+    double targetOPS;
+
     // Get Command Line Options
     OptionsDescription options("Usage");
     options.add_options()
         ("help",
             "produce help message")
+        ("throughput.ops",
+            ProgramOptions::value< double >(&targetOPS)->default_value(0),
+            "Operations per second the producer should attempt to offer "
+            "(0 means there should be no throughput control).")
     ;
     client.addOptionsTo(options);
 
@@ -45,15 +55,30 @@ main(int argc, char const *argv[])
 
     client.configure(variables);
 
-    // Run Workload
-    for (int i = 0; i < 200000; ++i) {
-        char msg[100];
-        snprintf(msg, 100, "Hello World: %d", i);
-        if (!client.produce(msg, 100)) {
+    // Compute delay
+    uint64_t sendDelayTSC = 0;
+    if (targetOPS > 0) {
+        sendDelayTSC = PerfUtils::Cycles::fromSeconds(1.0 / targetOPS);
+    }
+    uint64_t nextSendTSC = PerfUtils::Cycles::rdtsc();
+    char buf[100];
+    Payload::Header* header = (Payload::Header*) buf;
+    uint64_t msgId = 0;
+
+    while (true) {
+        header->msgId = ++msgId;
+        snprintf(buf + sizeof(Payload::Header), 100, "Message ID #");
+
+        header->timestampTSC = PerfUtils::Cycles::rdtsc();
+
+        if (!client.produce(buf, 100)) {
             break;
         }
+
+        nextSendTSC += sendDelayTSC;
+        // Throttle
+        while (nextSendTSC > PerfUtils::Cycles::rdtsc());
     }
 
-    /* code */
     return 0;
 }
