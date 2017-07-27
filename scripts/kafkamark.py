@@ -20,6 +20,7 @@
 
 Usage:
     kafkamark.py latency <dir>
+    kafkamark.py ttformat <log_file>
 '''
 
 from docopt import docopt
@@ -45,8 +46,25 @@ def latency(dirname):
     print("%10.2f    %9.4f" % (numbers[int(len(numbers)*9999/10000)], .9999))
     print("%10.2f    %8.3f" % (numbers[-1], 1.0))
 
+def ttformat(filename):
+    cps = None;
+    startTime = None
+    prevTime = 0.0
+    with open(filename, 'r') as logFile:
+        for line in logFile:
+            row = line.strip().split('|')
+            if row[1] == 'CONSUME':
+                ns = (1e9 * float(row[0]) / cps) - startTime
+                print("%8.1f ns (+%6.1f ns): %s" % (ns, ns - prevTime, row[3]))
+                prevTime = ns
+            elif row[1] == 'CPS':
+                cps = float(row[2])
+                startTime = 1e9 * float(row[0]) / cps
+
 if __name__ == '__main__':
     args = docopt(__doc__, version='cluster.py 0.0.1')
 
     if args['latency']:
         latency(args['<dir>'])
+    elif args['ttformat']:
+        ttformat(args['<log_file>'])
