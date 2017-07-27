@@ -17,9 +17,11 @@
 
 #include <signal.h>
 
-#include "Payload.h"
 #include "PerfUtils/Cycles.h"
 #include "PerfUtils/TimeTrace.h"
+
+#include "Payload.h"
+#include "TraceLog.h"
 
 using namespace Kafkamark;
 using PerfUtils::Cycles;
@@ -32,6 +34,7 @@ using PerfUtils::TimeTrace;
 void handle_sigint(int s) {
     std::cout << std::endl;
     TimeTrace::print();
+    TraceLog::flush();
     exit(1);
 }
 
@@ -69,17 +72,25 @@ main(int argc, char const *argv[])
     // TODO(cstlee): TimeTrace currently requires the output string's lifetime
     //               be longer than any call to print.  Once TimeTrace is fixed,
     //               the timeTraceOutName variable can be moved to a more
-    //               reasonable place like in the if statement. 
+    //               reasonable place like in the if statement.
     std::string timeTraceOutName = logDir;
     if (variables.count("logDir")) {
         timeTraceOutName.append("TimeTrace.log");
         TimeTrace::setOutputFileName(timeTraceOutName.c_str());
+
+        // TraceLog Config
+        std::string traceLogPath = logDir;
+        traceLogPath.append("consumer.log");
+        TraceLog::setOutputFilePath(traceLogPath.c_str());
     }
 
     client.configure(variables);
 
     // Set SIGING handler
     signal(SIGINT, handle_sigint);
+
+    TimeTrace::record("INIT");
+    TimeTrace::reset();
 
     // Run Workload
     while (true) {
@@ -94,11 +105,10 @@ main(int argc, char const *argv[])
             char* payload = (char*) msg.payload;
             Payload::Header* header = (Payload::Header*) payload;
             TimeTrace::record("Consumer: Print Payload");
-            std::cout << Cycles::toMicroseconds(endTSC - header->timestampTSC)
-                    << ": "
-                    << payload + sizeof(Payload::Header)
-                    << header->msgId
-                    << std::endl;
+            TraceLog::record("%d|%lu|%s",
+                    header->msgId,
+                    Cycles::toMicroseconds(endTSC - header->timestampTSC),
+                    payload + sizeof(Payload::Header));
             TimeTrace::record("Consumer: Done");
         }
     }
