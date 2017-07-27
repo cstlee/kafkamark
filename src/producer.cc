@@ -15,13 +15,28 @@
 
 #include "KafkaClient.h"
 
-#include "Payload.h"
+#include <signal.h>
+
 #include "PerfUtils/Cycles.h"
 #include "PerfUtils/TimeTrace.h"
+
+#include "Payload.h"
+#include "TraceLog.h"
 
 using namespace Kafkamark;
 using PerfUtils::Cycles;
 using PerfUtils::TimeTrace;
+
+/**
+ * Custom signal handler for SIGINT so that TimeTrace statements are printed
+ * before exiting.
+ */
+void handle_sigint(int s) {
+    std::cout << std::endl;
+    TimeTrace::print();
+    TraceLog::flush();
+    exit(1);
+}
 
 int
 main(int argc, char const *argv[])
@@ -67,9 +82,19 @@ main(int argc, char const *argv[])
     if (variables.count("logDir")) {
         timeTraceOutName.append("TimeTrace.log");
         TimeTrace::setOutputFileName(timeTraceOutName.c_str());
+
+        // TraceLog Config
+        std::string traceLogPath = logDir;
+        traceLogPath.append("producer.log");
+        TraceLog::setOutputFilePath(traceLogPath.c_str());
     }
 
     client.configure(variables);
+
+    // Set SIGING handler
+    signal(SIGINT, handle_sigint);
+
+    TraceLog::record("CPS|%f", Cycles::perSecond());
 
     // Compute delay
     uint64_t sendDelayTSC = 0;
@@ -83,13 +108,15 @@ main(int argc, char const *argv[])
 
     while (true) {
         header->msgId = ++msgId;
-        snprintf(buf + sizeof(Payload::Header), 100, "Message ID #");
-
         header->timestampTSC = PerfUtils::Cycles::rdtsc();
 
         if (!client.produce(buf, 100)) {
             break;
         }
+
+        // Log Send
+        TraceLog::record(header->timestampTSC, "PRODUCE|%d",
+                header->msgId);
 
         nextSendTSC += sendDelayTSC;
         // Throttle

@@ -13,13 +13,12 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "KafkaClient.h"
-
 #include <signal.h>
 
 #include "PerfUtils/Cycles.h"
 #include "PerfUtils/TimeTrace.h"
 
+#include "KafkaClient.h"
 #include "Payload.h"
 #include "TraceLog.h"
 
@@ -89,6 +88,8 @@ main(int argc, char const *argv[])
     // Set SIGING handler
     signal(SIGINT, handle_sigint);
 
+    TraceLog::record("CPS|%f", Cycles::perSecond());
+
     TimeTrace::record("INIT");
     TimeTrace::reset();
 
@@ -99,16 +100,15 @@ main(int argc, char const *argv[])
         if (!client.consume(&msg, 1000)) {
             // Nothing to do, just wait.
         } else {
-            TimeTrace::record(startTime, "Consumer: Get Message");
-            TimeTrace::record("Consumer: Message Received");
             uint64_t endTSC = Cycles::rdtsc();
-            char* payload = (char*) msg.payload;
-            Payload::Header* header = (Payload::Header*) payload;
-            TimeTrace::record("Consumer: Print Payload");
-            TraceLog::record("%d|%lu|%s",
+            TimeTrace::record(startTime, "Consumer: Get Message");
+            TimeTrace::record(endTSC, "Consumer: Message Received");
+
+            Payload::Header* header = (Payload::Header*) msg.payload;
+            TraceLog::record(endTSC, "CONSUME|%d|%lu",
                     header->msgId,
-                    Cycles::toMicroseconds(endTSC - header->timestampTSC),
-                    payload + sizeof(Payload::Header));
+                    Cycles::toMicroseconds(endTSC - header->timestampTSC));
+
             TimeTrace::record("Consumer: Done");
         }
     }
