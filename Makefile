@@ -1,9 +1,10 @@
 CC = g++
-CFLAGS = -std=c++11 -Wall -Werror
+CFLAGS = -std=c++11 -Wall -Werror \
+		-Ilib/PerfUtils/include
 LFLAGS = -static \
 		-l:libboost_program_options.a \
 		-l:librdkafka++.a -l:librdkafka.a -lpthread \
-		-l:libPerfUtils.a
+		-Llib/PerfUtils/lib -l:libPerfUtils.a
 
 SRCDIR = src
 OBJDIR = obj
