@@ -3,5 +3,5 @@
 
 bin
 obj
-src/*.o
-src/*.d
+
+*.pyc
