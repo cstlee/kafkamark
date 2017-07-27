@@ -20,6 +20,7 @@
 
 Usage:
     kafkamark.py latency <dir>
+    kafkamark.py batching <dir>
     kafkamark.py ttformat <log_file>
 '''
 
@@ -61,10 +62,58 @@ def ttformat(filename):
                 cps = float(row[2])
                 startTime = 1e9 * float(row[0]) / cps
 
+def batching(dirname):
+    consumerLog = dirname + "/consumer.log"
+
+    cps = None;
+    startTime = None
+    prevTime = 0
+    delta = 0
+    batchCount = None
+    batchStartTSC = None
+
+    batchDurations = []
+    batchSizes = []
+
+    with open(consumerLog, 'r') as logFile:
+        for line in logFile:
+            row = line.strip().split('|')
+            if row[1] == 'CONSUME':
+                tsc = int(row[0])
+                batchStart = (tsc - prevTime > 2 * delta)
+                if batchStart:
+                    if batchCount is not None:
+                        batchSizes.append(batchCount)
+                        batchDurations.append(tsc - batchStartTSC)
+                    batchCount = 0
+                    batchStartTSC = tsc
+                batchCount += 1
+                delta = tsc - prevTime
+                print("%20d %d" % (delta, batchCount))
+                prevTime = tsc
+            elif row[1] == 'CPS':
+                cps = float(row[2])
+
+    count = len(batchDurations)
+    batchDurations.sort()
+    batchDurations = [1000 * dur / cps for dur in batchDurations]
+    batchSizes.sort()
+    print("# Interval (msec)  Size (msg cnt)  Cum. Fraction\n"
+          "#-----------------------------------------------")
+    print("%15.2f    %10d      %8.3f" % (0.0, 0, 0.0))
+    print("%15.2f    %10d      %8.3f" % (batchDurations[0], batchSizes[0], 1.0/count))
+    for i in range(1, 100):
+        print("%15.2f    %10d      %8.3f" % (batchDurations[int(count*i/100)], batchSizes[int(count*i/100)], i/100.))
+    print("%15.2f    %10d      %8.3f" % (batchDurations[int(count*999/1000)], batchSizes[int(count*999/1000)], .999))
+    print("%15.2f    %10d      %9.4f" % (batchDurations[int(count*9999/10000)], batchSizes[int(count*9999/10000)], .9999))
+    print("%15.2f    %10d      %8.3f" % (batchDurations[-1], batchSizes[-1], 1.0))
+
 if __name__ == '__main__':
     args = docopt(__doc__, version='cluster.py 0.0.1')
 
     if args['latency']:
         latency(args['<dir>'])
+    elif args['batching']:
+        batching(args['<dir>'])
     elif args['ttformat']:
         ttformat(args['<log_file>'])
