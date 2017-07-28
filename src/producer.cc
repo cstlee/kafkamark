@@ -13,13 +13,12 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "KafkaClient.h"
-
 #include <signal.h>
 
 #include "PerfUtils/Cycles.h"
 #include "PerfUtils/TimeTrace.h"
 
+#include "KafkaClient.h"
 #include "Payload.h"
 #include "TraceLog.h"
 
@@ -74,13 +73,10 @@ main(int argc, char const *argv[])
         return 0;
     }
 
-    // TODO(cstlee): TimeTrace currently requires the output string's lifetime
-    //               be longer than any call to print.  Once TimeTrace is fixed,
-    //               the timeTraceOutName variable can be moved to a more
-    //               reasonable place like in the if statement.
-    std::string timeTraceOutName = logDir;
     if (variables.count("logDir")) {
-        timeTraceOutName.append("TimeTrace.log");
+        // TimeTrace Config
+        std::string timeTraceOutName = logDir;
+        timeTraceOutName.append("producer.timetrace.log");
         TimeTrace::setOutputFileName(timeTraceOutName.c_str());
 
         // TraceLog Config
