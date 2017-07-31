@@ -18,11 +18,11 @@
 usage: kafkamark report [options] <dirname>
 
 options:
-    -h --help
-    -a --all           Print the entire report.
-    -s --summary       Print report summary.
-    -b --batching      Print the 'batching' section of the report.
-    -l --latency       Print the 'latency' section of the report.
+    -h, --help
+    -a, --all          Print the entire report.
+    -s, --summary      Print report summary.
+    -b, --batching     Print the 'batching' section of the report.
+    -l, --latency      Print the 'latency' section of the report.
 '''
 
 def report(args):
