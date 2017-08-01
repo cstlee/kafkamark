@@ -19,8 +19,10 @@ usage: kafkamark run [options] <bindir>
 
 options:
     -h, --help
-    -r, --run-time <args>       Duration of the experiment in seconds.
+    -r, --run-time <arg>        Duration of the experiment in seconds.
                                 [default: 0]
+    --pre-run <arg>             Command run before the benchmark runs.
+    --post-run <arg>            Command run after the benchmark runs.
 
 general client options:
     -L, --logDir <arg>          Destination log directory for log output.
@@ -47,15 +49,18 @@ producer client options:
 '''
 
 import atexit
+import signal
 import subprocess
 import time
 
 consumer = None
 producer = None
+post_run_cmd = None
 
 def run(args):
     global consumer
     global producer
+    global post_run_cmd
 
     atexit.register(cleanup)
 
@@ -68,6 +73,13 @@ def run(args):
     producer_cmd += generalOptions
     consumer_cmd += getConsumerOptions(args)
     producer_cmd += getProducerOptions(args)
+
+    post_run_cmd = args['--post-run']
+
+    if args['--pre-run'] is not None:
+        print_log("running pre-run command")
+        print_log(args['--pre-run'])
+        subprocess.call(args['--pre-run'], shell=True)
 
     print_log("starting consumer...")
     print_log(consumer_cmd)
@@ -85,6 +97,14 @@ def run(args):
         time.sleep(int(args['--run-time']))
 
     print_log("run complete")
+
+    if producer.poll() is None:
+        producer.send_signal(signal.SIGINT)
+    if consumer.poll() is None:
+        consumer.send_signal(signal.SIGINT)
+
+    print_log("wait for output flush")
+    time.sleep(1)
 
 def getGeneralOptions(args):
     options = ''
@@ -129,3 +149,8 @@ def cleanup():
         if consumer.poll() is None:
             consumer.kill()
             print_log("consumer ({0}) killed".format(consumer.pid))
+
+    if post_run_cmd is not None:
+        print_log("running post-run command")
+        print_log(post_run_cmd)
+        subprocess.call(post_run_cmd, shell=True)
