@@ -16,14 +16,16 @@
 # OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 # PERFORMANCE OF THIS SOFTWARE.
 
-'''usage: kafkamark <command> [<args>...]
+'''
+usage: kafkamark <command> [<args>...]
 
 options:
     -h, --help
 
-Available commands:
-    report      Generate a benchmark report from the benchmark logs.
+available commands:
     format      Print a raw log in a human-readable format.
+    report      Generate a benchmark report from the benchmark logs.
+    run         Run benchmark.
 
 See 'kafkamark <command> --help' for more information on a specific command.
 
@@ -38,14 +40,18 @@ if __name__ == '__main__':
 
     argv = [args['<command>']] + args['<args>']
 
-    if args['<command>'] == 'report':
-        import kafkamark_report
-        args = docopt(kafkamark_report.__doc__, argv=argv)
-        kafkamark_report.report(args)
-    elif args['<command>'] == 'format':
+    if args['<command>'] == 'format':
         import kafkamark_format
         args = docopt(kafkamark_format.__doc__, argv=argv)
         kafkamark_format.format(args)
+    elif args['<command>'] == 'report':
+        import kafkamark_report
+        args = docopt(kafkamark_report.__doc__, argv=argv)
+        kafkamark_report.report(args)
+    elif args['<command>'] == 'run':
+        import kafkamark_run
+        args = docopt(kafkamark_run.__doc__, argv=argv)
+        kafkamark_run.run(args)
     else:
         exit("%r is not a kafkamark.py command. "
              "See 'kafkamark help'." % args['<command>'])
