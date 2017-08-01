@@ -31,7 +31,6 @@ using PerfUtils::TimeTrace;
  * before exiting.
  */
 void handle_sigint(int s) {
-    std::cout << std::endl;
     TimeTrace::print();
     TraceLog::flush();
     exit(1);
