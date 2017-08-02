@@ -27,13 +27,15 @@ using PerfUtils::Cycles;
 using PerfUtils::TimeTrace;
 
 /**
- * Custom signal handler for SIGINT so that TimeTrace statements are printed
- * before exiting.
+ * Signal whether or not the application should continue to run.
+ */
+static bool run = true;
+
+/**
+ * Custom signal handler for SIGINT to gracefully exit.
  */
 void handle_sigint(int s) {
-    TimeTrace::print();
-    TraceLog::flush();
-    exit(1);
+    run = false;
 }
 
 int
@@ -101,7 +103,7 @@ main(int argc, char const *argv[])
     Payload::Header* header = (Payload::Header*) buf;
     uint64_t msgId = 0;
 
-    while (true) {
+    while (run) {
         header->msgId = ++msgId;
         header->timestampTSC = PerfUtils::Cycles::rdtsc();
 
@@ -117,6 +119,9 @@ main(int argc, char const *argv[])
         // Throttle
         while (nextSendTSC > PerfUtils::Cycles::rdtsc());
     }
+
+    TimeTrace::print();
+    TraceLog::flush();
 
     return 0;
 }

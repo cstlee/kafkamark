@@ -27,13 +27,15 @@ using PerfUtils::Cycles;
 using PerfUtils::TimeTrace;
 
 /**
- * Custom signal handler for SIGINT so that TimeTrace statements are printed
- * before exiting.
+ * Signal whether or not the application should continue to run.
+ */
+static bool run = true;
+
+/**
+ * Custom signal handler for SIGINT to gracefully exit.
  */
 void handle_sigint(int s) {
-    TimeTrace::print();
-    TraceLog::flush();
-    exit(1);
+    run = false;
 }
 
 int
@@ -90,7 +92,7 @@ main(int argc, char const *argv[])
     TimeTrace::reset();
 
     // Run Workload
-    while (true) {
+    while (run) {
         KafkaClient::Message msg;
         uint64_t startTime = Cycles::rdtsc();
         if (!client.consume(&msg, 1000)) {
@@ -109,6 +111,8 @@ main(int argc, char const *argv[])
         }
     }
 
-    /* code */
+    TimeTrace::print();
+    TraceLog::flush();
+
     return 0;
 }
