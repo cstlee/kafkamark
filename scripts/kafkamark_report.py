@@ -15,60 +15,69 @@
 # PERFORMANCE OF THIS SOFTWARE.
 
 '''
-usage: kafkamark report [options] <dirname>
+usage:
+    kafkamark report [options] <dirname>
 
 options:
     -h, --help
-    -a, --all          Print the entire report.
-    -s, --summary      Print report summary.
-    -b, --batching     Print the 'batching' section of the report.
-    -l, --latency      Print the 'latency' section of the report.
+    -f, --force         Force the report to generate from the raw data
+    -s, --silent        Don't output to standard out.
+    -b, --batching      Print the 'batching' section of the report.
+    -l, --latency       Print the 'latency' section of the report.
 '''
 
+import os
+
+LATENCY_DATA_FILE = "latency.data"
+BATCH_INTERVAL_FILE = "batch_interval.data"
+BATCH_SIZE_FILE = "batch_size.data"
+
 def report(args):
-    print_default = True
+    if not args['--batching'] and not args['--latency']:
+        full_report = True
+    else:
+        full_report = False
 
-    if args['--summary'] or args['--all']:
-        summary(args['<dirname>'])
-        print_default = False
+    if args['--latency'] or full_report:
+        latency(args['<dirname>'], args['--force'], args['--silent'])
 
-    if args['--latency'] or args['--all']:
-        latency(args['<dirname>'])
-        print_default = False
+    if args['--batching'] or full_report:
+        batching(args['<dirname>'], args['--force'], args['--silent'])
 
-    if args['--batching'] or args['--all']:
-        batching(args['<dirname>'])
-        print_default = False
+def cdf_write(numbers, headers, fileName):
+    numbers.sort()
+    with open(fileName, 'w') as dataFile:
+        dataFile.write(headers)
+        count = len(numbers)
+        for i in xrange(count):
+            dataFile.write("%10.3f    %9.4f\n" % (numbers[i], float(i + 1)/count))
 
-    if print_default:
-        summary(args['<dirname>'])
+def cat(filename):
+    with open(filename, 'r') as dataFile:
+        print(dataFile.read())
 
-def summary(dirname):
-    # TODO(cstlee)
-    print("Summary Not Available")
-
-def latency(dirname):
+def latency(dirname, force, silent):
     consumerLog = dirname + "/consumer.log"
     numbers = []
 
-    with open(consumerLog, 'r') as logFile:
-        for line in logFile:
-            row = line.strip().split('|')
-            if row[1] == 'CONSUME':
-                numbers.append(float(row[3]) / 1000)
+    latencyData = dirname + "/" + LATENCY_DATA_FILE
 
-    numbers.sort()
-    print("# Time (msec)  Cum. Fraction\n"
-          "#---------------------------")
-    print("%10.2f    %8.3f" % (0.0, 0.0))
-    print("%10.2f    %8.3f" % (numbers[0], 1.0/len(numbers)))
-    for i in range(1, 100):
-        print("%10.2f    %8.3f" % (numbers[int(len(numbers)*i/100)], i/100.))
-    print("%10.2f    %8.3f" % (numbers[int(len(numbers)*999/1000)], .999))
-    print("%10.2f    %9.4f" % (numbers[int(len(numbers)*9999/10000)], .9999))
-    print("%10.2f    %8.3f" % (numbers[-1], 1.0))
+    if force or not os.path.isfile(latencyData):
+        with open(consumerLog, 'r') as logFile:
+            for line in logFile:
+                row = line.strip().split('|')
+                if row[1] == 'CONSUME':
+                    numbers.append(float(row[3]) / 1000)
 
-def batching(dirname):
+        header = ("# Time (msec)  Cum. Fraction\n"
+                 "#---------------------------\n")
+
+        cdf_write(numbers, header, latencyData)
+
+    if not silent:
+        cat(latencyData)
+
+def batching(dirname, force, silent):
     consumerLog = dirname + "/consumer.log"
 
     cps = None;
@@ -81,34 +90,38 @@ def batching(dirname):
     batchDurations = []
     batchSizes = []
 
-    with open(consumerLog, 'r') as logFile:
-        for line in logFile:
-            row = line.strip().split('|')
-            if row[1] == 'CONSUME':
-                tsc = int(row[0])
-                batchStart = (tsc - prevTime > 2 * delta)
-                if batchStart:
-                    if batchCount is not None:
-                        batchSizes.append(batchCount)
-                        batchDurations.append(tsc - batchStartTSC)
-                    batchCount = 0
-                    batchStartTSC = tsc
-                batchCount += 1
-                delta = tsc - prevTime
-                prevTime = tsc
-            elif row[1] == 'CPS':
-                cps = float(row[2])
+    durationData = dirname + "/" + BATCH_INTERVAL_FILE
+    sizeData = dirname + "/" + BATCH_SIZE_FILE
 
-    count = len(batchDurations)
-    batchDurations.sort()
-    batchDurations = [1000 * dur / cps for dur in batchDurations]
-    batchSizes.sort()
-    print("# Interval (msec)  Size (msg cnt)  Cum. Fraction\n"
-          "#-----------------------------------------------")
-    print("%15.2f    %10d      %8.3f" % (0.0, 0, 0.0))
-    print("%15.2f    %10d      %8.3f" % (batchDurations[0], batchSizes[0], 1.0/count))
-    for i in range(1, 100):
-        print("%15.2f    %10d      %8.3f" % (batchDurations[int(count*i/100)], batchSizes[int(count*i/100)], i/100.))
-    print("%15.2f    %10d      %8.3f" % (batchDurations[int(count*999/1000)], batchSizes[int(count*999/1000)], .999))
-    print("%15.2f    %10d      %9.4f" % (batchDurations[int(count*9999/10000)], batchSizes[int(count*9999/10000)], .9999))
-    print("%15.2f    %10d      %8.3f" % (batchDurations[-1], batchSizes[-1], 1.0))
+    if force or not os.path.isfile(durationData) or not os.path.isfile(sizeData):
+        with open(consumerLog, 'r') as logFile:
+            for line in logFile:
+                row = line.strip().split('|')
+                if row[1] == 'CONSUME':
+                    tsc = int(row[0])
+                    batchStart = (tsc - prevTime > 2 * delta)
+                    if batchStart:
+                        if batchCount is not None:
+                            batchSizes.append(batchCount)
+                            batchDurations.append(tsc - batchStartTSC)
+                        batchCount = 0
+                        batchStartTSC = tsc
+                    batchCount += 1
+                    delta = tsc - prevTime
+                    prevTime = tsc
+                elif row[1] == 'CPS':
+                    cps = float(row[2])
+
+    if force or not os.path.isfile(durationData):
+        header =  ("# Interval (msec)  Cum. Fraction\n"
+                 "#---------------------------\n")
+        cdf_write(batchDurations, header, durationData)
+
+    if force or not os.path.isfile(sizeData):
+        header =  ("# Size (msg cnt)  Cum. Fraction\n"
+                 "#---------------------------\n")
+        cdf_write(batchSizes, header, sizeData)
+
+    if not silent:
+        cat(durationData)
+        cat(sizeData)
