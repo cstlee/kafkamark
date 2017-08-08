@@ -23,6 +23,9 @@ options:
                                 [default: 0]
     --pre-run <arg>             Command run before the benchmark runs.
     --post-run <arg>            Command run after the benchmark runs.
+    -n, --dry-run               Show what will be run without actual exicution.
+    --re-run <arg>              Re-run a previous execution using the options
+                                from the provide params file.
 
 general client options:
     -L, --logDir <arg>          Destination log directory for log output.
@@ -49,23 +52,34 @@ producer client options:
 '''
 
 import atexit
+import pickle
 import signal
 import subprocess
 import time
 
+execute = True
 consumer = None
 producer = None
 post_run_cmd = None
 
 def run(args):
+    global execute
     global consumer
     global producer
     global post_run_cmd
 
+    bindir = args['<bindir>'].strip('/')
+
+    if args['--dry-run']:
+        execute = False
+
+    if args['--re-run'] is not None:
+        args = pickle.load(open(args['--re-run'], 'rb'))
+
     atexit.register(cleanup)
 
-    consumer_cmd = "{0}/consumer".format(args['<bindir>'].strip('/'))
-    producer_cmd = "{0}/producer".format(args['<bindir>'].strip('/'))
+    consumer_cmd = "{0}/consumer".format(bindir)
+    producer_cmd = "{0}/producer".format(bindir)
 
     # Add options
     generalOptions = getGeneralOptions(args)
@@ -79,32 +93,40 @@ def run(args):
     if args['--pre-run'] is not None:
         print_log("running pre-run command")
         print_log(args['--pre-run'])
-        subprocess.call(args['--pre-run'], shell=True)
+        if execute:
+            subprocess.call(args['--pre-run'], shell=True)
+
+    if args['--logDir'] is not None and execute:
+        pickle.dump(args, open(args['--logDir'] + "/params.p", 'wb'))
 
     print_log("starting consumer...")
     print_log(consumer_cmd)
-    consumer = subprocess.Popen(consumer_cmd.split())
+    if execute:
+        consumer = subprocess.Popen(consumer_cmd.split())
 
-    time.sleep(1)
+    if execute:
+        time.sleep(1)
 
     print_log("starting producer...")
     print_log(producer_cmd)
-    producer = subprocess.Popen(producer_cmd.split())
+    if execute:
+        producer = subprocess.Popen(producer_cmd.split())
 
     print_log("run timer start")
 
-    if producer.poll() is None and consumer.poll() is None:
+    if execute and producer.poll() is None and consumer.poll() is None:
         time.sleep(int(args['--run-time']))
 
     print_log("run complete")
 
-    if producer.poll() is None:
+    if execute and producer.poll() is None:
         producer.send_signal(signal.SIGINT)
-    if consumer.poll() is None:
+    if execute and consumer.poll() is None:
         consumer.send_signal(signal.SIGINT)
 
     print_log("wait for output flush")
-    time.sleep(1)
+    if execute:
+        time.sleep(1)
 
 def getGeneralOptions(args):
     options = ''
@@ -137,8 +159,10 @@ def print_log(msg):
             msg))
 
 def cleanup():
+    global execute
     global consumer
     global producer
+    global post_run_cmd
 
     if producer is not None:
         if producer.poll() is None:
@@ -153,4 +177,5 @@ def cleanup():
     if post_run_cmd is not None:
         print_log("running post-run command")
         print_log(post_run_cmd)
-        subprocess.call(post_run_cmd, shell=True)
+        if execute:
+            subprocess.call(post_run_cmd, shell=True)
