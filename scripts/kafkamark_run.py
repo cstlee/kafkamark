@@ -25,7 +25,7 @@ options:
     --post-run <arg>            Command run after the benchmark runs.
     -n, --dry-run               Show what will be run without actual exicution.
     --re-run <arg>              Re-run a previous execution using the options
-                                from the provide params file.
+                                from the provide param file.
 
 general client options:
     -L, --logDir <arg>          Destination log directory for log output.
@@ -56,6 +56,8 @@ import pickle
 import signal
 import subprocess
 import time
+
+from kafkamark_filenames import PARAM_FILE
 
 execute = True
 consumer = None
@@ -97,7 +99,8 @@ def run(args):
             subprocess.call(args['--pre-run'], shell=True)
 
     if args['--logDir'] is not None and execute:
-        pickle.dump(args, open(args['--logDir'] + "/params.p", 'wb'))
+        filePath = "{0}/{1}".format(args['--logDir'].strip('/'), PARAM_FILE)
+        pickle.dump(args, open(filePath, 'wb'))
 
     print_log("starting consumer...")
     print_log(consumer_cmd)

@@ -28,9 +28,9 @@ options:
 
 import os
 
-LATENCY_DATA_FILE = "latency.data"
-BATCH_INTERVAL_FILE = "batch_interval.data"
-BATCH_SIZE_FILE = "batch_size.data"
+from kafkamark_filenames import LATENCY_DATA_FILE
+from kafkamark_filenames import BATCH_INTERVAL_FILE
+from kafkamark_filenames import BATCH_SIZE_FILE
 
 def report(args):
     if not args['--batching'] and not args['--latency']:
