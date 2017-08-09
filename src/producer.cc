@@ -75,6 +75,10 @@ main(int argc, char const *argv[])
     }
 
     if (variables.count("logDir")) {
+        if (logDir.back() != '/') {
+            logDir.append("/");
+        }
+
         // TimeTrace Config
         std::string timeTraceOutName = logDir;
         timeTraceOutName.append("producer.timetrace.log");
