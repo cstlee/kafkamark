@@ -24,6 +24,7 @@ options:
     -s, --silent        Don't output to standard out.
     -b, --batching      Print the 'batching' section of the report.
     -l, --latency       Print the 'latency' section of the report.
+    --clean             Cleanup and remove gnerated ouput files.
 '''
 
 import os
@@ -33,6 +34,12 @@ from kafkamark_filenames import BATCH_INTERVAL_FILE
 from kafkamark_filenames import BATCH_SIZE_FILE
 
 def report(args):
+    if args['--clean']:
+        report_clean(args)
+    else:
+        report_main(args)
+
+def report_main(args):
     if not args['--batching'] and not args['--latency']:
         full_report = True
     else:
@@ -43,6 +50,19 @@ def report(args):
 
     if args['--batching'] or full_report:
         batching(args['<dirname>'], args['--force'], args['--silent'])
+
+def report_clean(args):
+    dirname = args['<dirname>'].strip('/') + '/'
+    files = ( LATENCY_DATA_FILE
+            , BATCH_INTERVAL_FILE
+            , BATCH_SIZE_FILE)
+    for filename in files:
+        filepath = dirname + filename
+        if os.path.exists(filepath):
+        	try:
+        		os.remove(filepath)
+        	except OSError, e:
+        		print("Error: {0} - {1}.".format(e.filename, e.strerror))
 
 def cdf_write(numbers, headers, fileName):
     numbers.sort()
