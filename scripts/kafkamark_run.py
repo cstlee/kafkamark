@@ -131,6 +131,9 @@ def run(args):
     if execute:
         time.sleep(1)
 
+    cleanup()
+    post_run_cmd = None
+
 def getGeneralOptions(args):
     options = ''
     options += getOption(args, '--logDir')

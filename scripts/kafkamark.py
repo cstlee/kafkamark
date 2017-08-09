@@ -26,6 +26,7 @@ available commands:
     format      Print a raw log in a human-readable format.
     report      Generate a benchmark report from the benchmark logs.
     run         Run benchmark.
+    sweep       Commands benchmarking over a range of configurations.
 
 See 'kafkamark <command> --help' for more information on a specific command.
 
@@ -52,6 +53,9 @@ if __name__ == '__main__':
         import kafkamark_run
         args = docopt(kafkamark_run.__doc__, argv=argv)
         kafkamark_run.run(args)
+    elif args['<command>'] == 'sweep':
+        import kafkamark_sweep
+        kafkamark_sweep.sweep(argv)
     else:
         exit("%r is not a kafkamark.py command. "
-             "See 'kafkamark help'." % args['<command>'])
+             "See 'kafkamark --help'." % args['<command>'])
