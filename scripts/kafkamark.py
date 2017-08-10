@@ -25,6 +25,7 @@ options:
 available commands:
     format      Print a raw log in a human-readable format.
     report      Generate a benchmark report from the benchmark logs.
+    plot        Plot a datafile.
     run         Run benchmark.
     sweep       Commands benchmarking over a range of configurations.
 
@@ -48,6 +49,9 @@ if __name__ == '__main__':
     elif args['<command>'] == 'report':
         import kafkamark_report
         kafkamark_report.report(argv)
+    elif args['<command>'] == 'plot':
+        import kafkamark_plot
+        kafkamark_plot.plot(argv)
     elif args['<command>'] == 'run':
         import kafkamark_run
         args = docopt(kafkamark_run.__doc__, argv=argv)
