@@ -18,11 +18,9 @@
 usage:
     kafkamark sweep <command> [<args>...]
 
-options:
-    -h, --help              Print usage information.
-
 available commands:
-    run                     Run a set of benchmarks with a varying parameter.
+    help        Print usage information.
+    run         Run a set of benchmarks with a varying parameter.
 '''
 
 __run_usage = '''
@@ -51,9 +49,11 @@ def sweep(argv):
     if args['<command>'] == 'run':
         args = docopt(__run_usage, argv=argv)
         sweep_run(args)
+    elif args['<command>'] in ('help', '-h', '--help'):
+        print(__doc__.strip("\n"))
     else:
         exit("%r is not a 'kafkamark sweep' command. "
-             "See 'kafkamark sweep --help'." % args['<command>'])
+             "See 'kafkamark sweep help'." % args['<command>'])
 
 def sweep_run(args):
     import kafkamark_run
