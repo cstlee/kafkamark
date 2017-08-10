@@ -21,12 +21,14 @@ usage:
 options:
     -h, --help
     -f, --force         Force the report to generate from the raw data
+    -s, --summary       Print a summaries instead of full reports.
     -q, --quiet         Don't output to standard out.
     -b, --batching      Print the 'batching' section of the report.
     -l, --latency       Print the 'latency' section of the report.
     --clean             Cleanup and remove gnerated ouput files.
 '''
 
+import numpy as np
 import os
 
 from docopt import docopt
@@ -49,10 +51,16 @@ def report_main(args):
         full_report = False
 
     if args['--latency'] or full_report:
-        latency(args['<dirname>'], args['--force'], args['--quiet'])
+        latency(args['<dirname>'],
+                args['--force'],
+                args['--summary'],
+                args['--quiet'])
 
     if args['--batching'] or full_report:
-        batching(args['<dirname>'], args['--force'], args['--quiet'])
+        batching(args['<dirname>'],
+                 args['--force'],
+                 args['--summary'],
+                 args['--quiet'])
 
 def report_clean(args):
     dirname = args['<dirname>'].strip('/') + '/'
@@ -79,7 +87,23 @@ def cat(filename):
     with open(filename, 'r') as dataFile:
         print(dataFile.read())
 
-def latency(dirname, force, quiet):
+def printSummary(filename, prefix, unit):
+    numbers = []
+    with open(filename, 'r') as f:
+        for line in f.readlines():
+            if line[0] == '#':
+                continue
+            data = line.split()
+            numbers.append(float(data[0]))
+    numbers.sort()
+    count = len(numbers)
+    print("{0:20} {1:>15} {2}".format(prefix + "", numbers[int(np.floor(0.5 * count))], unit))
+    print("{0:20} {1:>15} {2}".format(prefix + ".min", numbers[0], unit))
+    print("{0:20} {1:>15} {2}".format(prefix + ".9", numbers[int(np.floor(0.9 * count))], unit))
+    print("{0:20} {1:>15} {2}".format(prefix + ".99", numbers[int(np.floor(0.99 * count))], unit))
+    print("{0:20} {1:>15} {2}".format(prefix + ".999", numbers[int(np.floor(0.999 * count))], unit))
+
+def latency(dirname, force, summary, quiet):
     consumerLog = dirname + "/consumer.log"
     numbers = []
 
@@ -98,9 +122,12 @@ def latency(dirname, force, quiet):
         cdf_write(numbers, header, latencyData)
 
     if not quiet:
-        cat(latencyData)
+        if summary:
+            printSummary(latencyData, 'latency', 'ms')
+        else:
+            cat(latencyData)
 
-def batching(dirname, force, quiet):
+def batching(dirname, force, summary, quiet):
     consumerLog = dirname + "/consumer.log"
 
     cps = None;
@@ -146,5 +173,9 @@ def batching(dirname, force, quiet):
         cdf_write(batchSizes, header, sizeData)
 
     if not quiet:
-        cat(durationData)
-        cat(sizeData)
+        if summary:
+            printSummary(durationData, 'batch.interval', 'ms')
+            printSummary(sizeData, 'batch.size', '')
+        else:
+            cat(durationData)
+            cat(sizeData)
