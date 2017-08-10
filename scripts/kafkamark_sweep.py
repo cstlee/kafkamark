@@ -52,8 +52,6 @@ options:
     --param <arg>           Name of the parameter that should be plotted.
 '''
 
-import matplotlib.pyplot as plt
-import numpy as np
 import os
 import pickle
 
@@ -103,6 +101,8 @@ def sweep_run(args):
 
 def sweep_plot(args):
     import kafkamark_report
+    import matplotlib.pyplot as plt
+    import numpy as np
     x = []
     y50 = []
     y90 = []
