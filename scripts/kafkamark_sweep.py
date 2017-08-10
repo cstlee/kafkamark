@@ -21,6 +21,7 @@ usage:
 available commands:
     help        Print usage information.
     run         Run a set of benchmarks with a varying parameter.
+    plot        Plot a benchmark sweep.
 '''
 
 __run_usage = '''
@@ -39,9 +40,29 @@ options:
     --param-step <arg>      Parameter value increment. [default: 1]
 '''
 
+__plot_usage = '''
+usage: kafkamark sweep plot <input_dirs>...
+                            --param <arg>
+                            ( --latency
+                            | --batch-interval
+                            | --batch-size )
+
+options:
+    -h, --help              Print usage information.
+    --param <arg>           Name of the parameter that should be plotted.
+'''
+
+import matplotlib.pyplot as plt
+import numpy as np
 import os
+import pickle
 
 from docopt import docopt
+
+from kafkamark_filenames import LATENCY_DATA_FILE
+from kafkamark_filenames import BATCH_INTERVAL_FILE
+from kafkamark_filenames import BATCH_SIZE_FILE
+from kafkamark_filenames import PARAM_FILE
 
 def sweep(argv):
     args = docopt(__doc__, argv=argv, options_first=True)
@@ -49,6 +70,9 @@ def sweep(argv):
     if args['<command>'] == 'run':
         args = docopt(__run_usage, argv=argv)
         sweep_run(args)
+    elif args['<command>'] == 'plot':
+        args = docopt(__plot_usage, argv=argv)
+        sweep_plot(args)
     elif args['<command>'] in ('help', '-h', '--help'):
         print(__doc__.strip("\n"))
     else:
@@ -76,3 +100,55 @@ def sweep_run(args):
         kafkamark_run.run(run_args)
 
         value += int(args['--param-step'])
+
+def sweep_plot(args):
+    import kafkamark_report
+    x = []
+    y50 = []
+    y90 = []
+    y99 = []
+    for dirname in args['<input_dirs>']:
+        dirname = dirname.strip('/') + '/'
+        # Get Param value
+        with open(dirname + PARAM_FILE, 'rb') as paramFile:
+            params = pickle.load(paramFile)
+        param_value = params['--' + args['--param']]
+        x.append(int(param_value))
+
+        # Generate Reports
+        kafkamark_report.report(['report', dirname, '-s'])
+
+        # Get Data
+        if args['--latency']:
+            numbers = getNumbers(dirname + LATENCY_DATA_FILE)
+        elif args['--batch-interval']:
+            pass
+        elif args['--batch-size']:
+            pass
+
+        numbers.sort()
+        count = len(numbers)
+        y50.append(numbers[int(np.ceil(0.5 * count))])
+        y90.append(numbers[int(np.ceil(0.9 * count))])
+        y99.append(numbers[int(np.ceil(0.99 * count))])
+
+    index = np.argsort(x)
+    x = [x[i] for i in index]
+    y50 = [y50[i] for i in index]
+    y90 = [y90[i] for i in index]
+    y99 = [y99[i] for i in index]
+
+    plt.plot(x, y50)
+    plt.plot(x, y90)
+    plt.plot(x, y99)
+    plt.show()
+
+def getNumbers(filename):
+    numbers = []
+    with open(filename, 'r') as f:
+        for line in f.readlines():
+            if line[0] == '#':
+                continue
+            data = line.split()
+            numbers.append(float(data[0]))
+    return numbers

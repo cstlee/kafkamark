@@ -29,11 +29,14 @@ options:
 
 import os
 
+from docopt import docopt
+
 from kafkamark_filenames import LATENCY_DATA_FILE
 from kafkamark_filenames import BATCH_INTERVAL_FILE
 from kafkamark_filenames import BATCH_SIZE_FILE
 
-def report(args):
+def report(argv):
+    args = docopt(__doc__, argv=argv)
     if args['--clean']:
         report_clean(args)
     else:

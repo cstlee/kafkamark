@@ -47,8 +47,7 @@ if __name__ == '__main__':
         kafkamark_format.format(args)
     elif args['<command>'] == 'report':
         import kafkamark_report
-        args = docopt(kafkamark_report.__doc__, argv=argv)
-        kafkamark_report.report(args)
+        kafkamark_report.report(argv)
     elif args['<command>'] == 'run':
         import kafkamark_run
         args = docopt(kafkamark_run.__doc__, argv=argv)
