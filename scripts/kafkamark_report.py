@@ -21,7 +21,7 @@ usage:
 options:
     -h, --help
     -f, --force         Force the report to generate from the raw data
-    -s, --silent        Don't output to standard out.
+    -q, --quiet         Don't output to standard out.
     -b, --batching      Print the 'batching' section of the report.
     -l, --latency       Print the 'latency' section of the report.
     --clean             Cleanup and remove gnerated ouput files.
@@ -49,10 +49,10 @@ def report_main(args):
         full_report = False
 
     if args['--latency'] or full_report:
-        latency(args['<dirname>'], args['--force'], args['--silent'])
+        latency(args['<dirname>'], args['--force'], args['--quiet'])
 
     if args['--batching'] or full_report:
-        batching(args['<dirname>'], args['--force'], args['--silent'])
+        batching(args['<dirname>'], args['--force'], args['--quiet'])
 
 def report_clean(args):
     dirname = args['<dirname>'].strip('/') + '/'
@@ -79,7 +79,7 @@ def cat(filename):
     with open(filename, 'r') as dataFile:
         print(dataFile.read())
 
-def latency(dirname, force, silent):
+def latency(dirname, force, quiet):
     consumerLog = dirname + "/consumer.log"
     numbers = []
 
@@ -97,10 +97,10 @@ def latency(dirname, force, silent):
 
         cdf_write(numbers, header, latencyData)
 
-    if not silent:
+    if not quiet:
         cat(latencyData)
 
-def batching(dirname, force, silent):
+def batching(dirname, force, quiet):
     consumerLog = dirname + "/consumer.log"
 
     cps = None;
@@ -145,6 +145,6 @@ def batching(dirname, force, silent):
                  "#---------------------------\n")
         cdf_write(batchSizes, header, sizeData)
 
-    if not silent:
+    if not quiet:
         cat(durationData)
         cat(sizeData)
