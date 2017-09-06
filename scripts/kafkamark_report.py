@@ -116,7 +116,7 @@ def latency(dirname, force, summary, quiet):
                 if row[1] == 'CONSUME':
                     numbers.append(float(row[3]) / 1000)
 
-        header = ("# Time (msec)  Cum. Fraction\n"
+        header = ("# Time (ms)    Cum. Fraction\n"
                  "#---------------------------\n")
 
         cdf_write(numbers, header, latencyData)
@@ -137,7 +137,7 @@ def batching(dirname, force, summary, quiet):
     batchCount = None
     batchStartTSC = None
 
-    batchDurations = []
+    batchDurationsMS = []
     batchSizes = []
 
     durationData = dirname + "/" + BATCH_INTERVAL_FILE
@@ -153,7 +153,7 @@ def batching(dirname, force, summary, quiet):
                     if batchStart:
                         if batchCount is not None:
                             batchSizes.append(batchCount)
-                            batchDurations.append(tsc - batchStartTSC)
+                            batchDurationsMS.append(1000 * (tsc - batchStartTSC) / cps)
                         batchCount = 0
                         batchStartTSC = tsc
                     batchCount += 1
@@ -163,9 +163,9 @@ def batching(dirname, force, summary, quiet):
                     cps = float(row[2])
 
     if force or not os.path.isfile(durationData):
-        header =  ("# Interval (msec)  Cum. Fraction\n"
+        header =  ("# Interval (ms)  Cum. Fraction\n"
                  "#---------------------------\n")
-        cdf_write(batchDurations, header, durationData)
+        cdf_write(batchDurationsMS, header, durationData)
 
     if force or not os.path.isfile(sizeData):
         header =  ("# Size (msg cnt)  Cum. Fraction\n"
