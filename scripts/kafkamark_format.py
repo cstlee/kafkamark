@@ -15,14 +15,48 @@
 # PERFORMANCE OF THIS SOFTWARE.
 
 '''
-usage: kafkamark format <filename>
+usage: kafkamark format [options] <filename>
 
 options:
     -h, --help
+    --batching
+    --timetrace
 '''
 
 def format(args):
-    ttformat(args['<filename>'])
+    if args['--batching']:
+        batching(args['<filename>'])
+    if args['--timetrace']:
+        ttformat(args['<filename>'])
+
+def batching(filename):
+    cps = None;
+    startTime = None
+    ns = 0.0
+    count = 0
+    with open(filename, 'r') as logFile:
+        for line in logFile:
+            row = line.strip().split('|')
+            if row[1] == 'CONSUME':
+                hasMessage = (row[2].find('No Message') < 0)
+                if count < 0 and hasMessage:
+                    print("%8.1f ns (+%6.1f ns): "
+                          "No Messages Recieved in %d attempts" % (ns, ns - prevTime, -count))
+                    count = 0
+                if count > 0 and not hasMessage:
+                    print("%8.1f ns (+%6.1f ns): "
+                          "%d Message Recieved" % (ns, ns - prevTime, count))
+                    count = 0
+                if count == 0:
+                    prevTime = ns
+                    ns = (1e9 * float(row[0]) / cps) - startTime
+                if hasMessage:
+                    count += 1
+                else:
+                    count -= 1
+            elif row[1] == 'CPS':
+                cps = float(row[2])
+                startTime = 1e9 * float(row[0]) / cps
 
 def ttformat(filename):
     cps = None;
@@ -33,7 +67,7 @@ def ttformat(filename):
             row = line.strip().split('|')
             if row[1] == 'CONSUME':
                 ns = (1e9 * float(row[0]) / cps) - startTime
-                print("%8.1f ns (+%6.1f ns): %s" % (ns, ns - prevTime, row[3]))
+                print("%8.1f ns (+%6.1f ns): %s" % (ns, ns - prevTime, row[2]))
                 prevTime = ns
             elif row[1] == 'CPS':
                 cps = float(row[2])
