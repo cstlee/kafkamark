@@ -41,14 +41,21 @@ consumer client options:
     --fetch.wait.max.ms <arg>           Maximum time the broker may wait to fill
                                         the response with fetch.min.bytes.
                                         *Type: integer*
+    --fetch.error.backoff.ms <arg>      How long to postpone the next fetch
+                                        request for a topic+partition in case
+                                        of a fetch error.
+                                        *Type: integer*
 
 producer client options:
-    --throughput.ops <arg>              Operations per second the producer
-                                        should attempt to offer.
-                                        *Type: float*
-    --queue.buffering.max.ms <arg>      Maximum time, in milliseconds, for
-                                        buffering data on the producer queue.
-                                        *Type: integer*
+    --throughput.ops <arg>                  Operations per second the producer
+                                            should attempt to offer.
+                                            *Type: float*
+    --queue.buffering.max.messages <arg>    Maximum number of messages allowed
+                                            on the producer queue.
+                                            *Type: integer*
+    --queue.buffering.max.ms <arg>          Maximum time, in milliseconds, for
+                                            buffering data on the producer
+                                            queue. *Type: integer*
 '''
 
 import atexit
@@ -145,11 +152,13 @@ def getGeneralOptions(args):
 def getConsumerOptions(args):
     options = ''
     options += getOption(args, '--fetch.wait.max.ms')
+    options += getOption(args, '--fetch.error.backoff.ms')
     return options
 
 def getProducerOptions(args):
     options = ''
     options += getOption(args, '--throughput.ops')
+    options += getOption(args, '--queue.buffering.max.messages')
     options += getOption(args, '--queue.buffering.max.ms')
     return options
 

@@ -65,10 +65,10 @@ def ttformat(filename):
     with open(filename, 'r') as logFile:
         for line in logFile:
             row = line.strip().split('|')
-            if row[1] == 'CONSUME':
-                ns = (1e9 * float(row[0]) / cps) - startTime
-                print("%8.1f ns (+%6.1f ns): %s" % (ns, ns - prevTime, row[2]))
-                prevTime = ns
-            elif row[1] == 'CPS':
+            if row[1] == 'CPS':
                 cps = float(row[2])
                 startTime = 1e9 * float(row[0]) / cps
+            else:
+                ns = (1e9 * float(row[0]) / cps) - startTime
+                print("%8.1f ns (+%6.1f ns): %s : %s" % (ns, ns - prevTime, row[1], row[2]))
+                prevTime = ns

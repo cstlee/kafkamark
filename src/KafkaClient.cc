@@ -14,6 +14,9 @@
  */
 
 #include "KafkaClient.h"
+#include "PerfUtils/TimeTrace.h"
+
+using PerfUtils::TimeTrace;
 
 namespace Kafkamark {
 
@@ -49,9 +52,18 @@ KafkaClient::KafkaClient(KafkaClient::Mode mode)
                 ProgramOptions::value< std::string >(),
                 "Maximum time the broker may wait to fill the response with "
                 "fetch.min.bytes. *Type: integer*")
+        ("fetch.error.backoff.ms",
+                ProgramOptions::value< std::string >(),
+                "How long to postpone the next fetch request for a "
+                "topic+partition in case of a fetch error. "
+                "*Type: integer*")
     ;
 
     producerOptions.add_options()
+        ("queue.buffering.max.messages",
+                ProgramOptions::value< std::string >(),
+                "Maximum number of messages allowed on the producer queue. "
+                "*Type: integer*")
         ("queue.buffering.max.ms",
                 ProgramOptions::value< std::string >(),
                 "Maximum time, in milliseconds, for buffering data on the "
@@ -137,10 +149,12 @@ KafkaClient::configure(ProgramOptions::variables_map& variables)
     // Consumer configuration
     if (mode & CONSUMER) {
         setConfig(variables, "fetch.wait.max.ms");
+        setConfig(variables, "fetch.error.backoff.ms");
     }
 
     // Producer configuration
     if (mode & PRODUCER) {
+        setConfig(variables, "queue.buffering.max.messages");
         setConfig(variables, "queue.buffering.max.ms");
     }
 
@@ -243,6 +257,7 @@ KafkaClient::produce(char* msg, size_t len)
     int partition = 0;
     RdKafka::ErrorCode resp;
     do {
+        TimeTrace::record("...try produce...");
         resp = producer->produce(topic, partition,
                 RdKafka::Producer::RK_MSG_COPY, msg, len, NULL, NULL);
     } while (resp == RdKafka::ERR__QUEUE_FULL);

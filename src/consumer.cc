@@ -95,23 +95,49 @@ main(int argc, char const *argv[])
     TimeTrace::record("INIT");
     TimeTrace::reset();
 
+    // uint64_t firstNAtsc = 0;
+    // int noMsgCnt = 0;
+
     // Run Workload
     while (run) {
         KafkaClient::Message msg;
-        uint64_t startTime = Cycles::rdtsc();
-        if (!client.consume(&msg, 1000)) {
-            // Nothing to do, just wait.
+        // uint64_t startTime = Cycles::rdtsc();
+        if (!client.consume(&msg, 10000)) {
+            uint64_t endTSC = Cycles::rdtsc();
+            // TimeTrace::record(startTime, "Consumer: Get Message");
+            TimeTrace::record(endTSC, "Consumer: No Message Received");
+            TraceLog::record(endTSC, "CONSUME|No Message Received");
+            // if (noMsgCnt == 0) {
+            //     firstNAtsc = endTSC;
+            // }
+            // ++noMsgCnt;
         } else {
             uint64_t endTSC = Cycles::rdtsc();
-            TimeTrace::record(startTime, "Consumer: Get Message");
-            TimeTrace::record(endTSC, "Consumer: Message Received");
-
             Payload::Header* header = (Payload::Header*) msg.payload;
-            TraceLog::record(endTSC, "CONSUME|%d|%lu",
+
+            // TimeTrace::record(startTime, "Consumer: Get Message");
+            TimeTrace::record(endTSC,
+                    "Consumer: Message %4d Received in %9lu us",
+                    header->msgId,
+                    Cycles::toMicroseconds(endTSC - header->timestampTSC));
+            TraceLog::record(endTSC,
+                    "CONSUME|Message %4d Received in %9lu us",
                     header->msgId,
                     Cycles::toMicroseconds(endTSC - header->timestampTSC));
 
-            TimeTrace::record("Consumer: Done");
+            // if (noMsgCnt > 0) {
+            //     TimeTrace::record(firstNAtsc,
+            //             "CONSUME| No Messages Received last %9d tries",
+            //             noMsgCnt);
+            //     noMsgCnt = 0;
+            //     firstNAtsc = 0;
+            // }
+            //
+            // TimeTrace::record(endTSC, "CONSUME| %4d : %6lu us",
+            //         header->msgId,
+            //         Cycles::toMicroseconds(endTSC - header->timestampTSC));
+
+            // TimeTrace::record("Consumer: Done");
         }
     }
 

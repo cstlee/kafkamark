@@ -111,9 +111,11 @@ main(int argc, char const *argv[])
         header->msgId = ++msgId;
         header->timestampTSC = PerfUtils::Cycles::rdtsc();
 
+        TimeTrace::record("produce...");
         if (!client.produce(buf, 100)) {
             break;
         }
+        TimeTrace::record("...done");
 
         // Log Send
         TraceLog::record(header->timestampTSC, "PRODUCE|%d",
